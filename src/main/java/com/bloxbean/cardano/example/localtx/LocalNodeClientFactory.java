@@ -15,7 +15,7 @@ public enum LocalNodeClientFactory {
 
     LocalNodeClientFactory() {
         this.localStateQueryClient = new LocalStateQueryClient(Constant.CARDANO_NODE_SOCKET_FILE, Constant.PROTOCOL_MAGIC_ID);
-        this.localStateQueryClient.start();
+        this.localStateQueryClient.start(result -> {});
 
         this.txSubmissionClient = new LocalTxSubmissionClient(Constant.CARDANO_NODE_SOCKET_FILE, Constant.PROTOCOL_MAGIC_ID);
         this.txSubmissionClient.addTxSubmissionListener(new LocalTxSubmissionListener() {
@@ -30,7 +30,7 @@ public enum LocalNodeClientFactory {
                 System.out.println("########## Transaction submission failed ###########");
             }
         });
-        this.txSubmissionClient.start();
+        this.txSubmissionClient.start(txResult -> {});
     }
 
     public LocalStateQueryClient getLocalStateQueryClient() {

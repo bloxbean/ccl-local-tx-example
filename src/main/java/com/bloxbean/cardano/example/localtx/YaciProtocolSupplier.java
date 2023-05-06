@@ -1,13 +1,21 @@
 package com.bloxbean.cardano.example.localtx;
 
+import co.nstant.in.cbor.model.Array;
+import co.nstant.in.cbor.model.DataItem;
+import co.nstant.in.cbor.model.UnsignedInteger;
 import com.bloxbean.cardano.client.api.ProtocolParamsSupplier;
 import com.bloxbean.cardano.client.api.model.ProtocolParams;
-import com.bloxbean.cardano.yaci.core.helpers.LocalStateQueryClient;
-import com.bloxbean.cardano.yaci.core.model.Era;
+import com.bloxbean.cardano.client.util.HexUtil;
+import com.bloxbean.cardano.yaci.core.model.ProtocolParamUpdate;
 import com.bloxbean.cardano.yaci.core.protocol.localstate.queries.CurrentProtocolParamQueryResult;
 import com.bloxbean.cardano.yaci.core.protocol.localstate.queries.CurrentProtocolParamsQuery;
+import com.bloxbean.cardano.yaci.core.util.CborSerializationUtil;
+import com.bloxbean.cardano.yaci.helper.LocalStateQueryClient;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.HashMap;
+import java.util.Map;
 
 public class YaciProtocolSupplier implements ProtocolParamsSupplier {
 
@@ -19,47 +27,62 @@ public class YaciProtocolSupplier implements ProtocolParamsSupplier {
     public ProtocolParams getProtocolParams() {
         LocalStateQueryClient localStateQueryClient = LocalNodeClientFactory.INSTANCE.getLocalStateQueryClient();
         CurrentProtocolParamQueryResult currentProtocolParameters =
-                (CurrentProtocolParamQueryResult) localStateQueryClient.executeQuery(new CurrentProtocolParamsQuery(Era.Alonzo)).block();
+                (CurrentProtocolParamQueryResult) localStateQueryClient.executeQuery(new CurrentProtocolParamsQuery()).block();
+
+        ProtocolParamUpdate protocolParamUpdate = currentProtocolParameters.getProtocolParams();
 
         ProtocolParams protocolParams = new ProtocolParams();
-        protocolParams.setMinFeeA(currentProtocolParameters.getProtocolParams().getMinFeeA());
-        protocolParams.setMinFeeB(currentProtocolParameters.getProtocolParams().getMinFeeB());
-        protocolParams.setMaxBlockSize(currentProtocolParameters.getProtocolParams().getMaxBlockSize());
-        protocolParams.setMaxTxSize(currentProtocolParameters.getProtocolParams().getMaxTxSize());
-        protocolParams.setMaxBlockHeaderSize(currentProtocolParameters.getProtocolParams().getMaxBlockHeaderSize());
-        protocolParams.setKeyDeposit(String.valueOf(currentProtocolParameters.getProtocolParams().getKeyDeposit()));
-        protocolParams.setPoolDeposit(String.valueOf(currentProtocolParameters.getProtocolParams().getPoolDeposit()));
-        protocolParams.setEMax(currentProtocolParameters.getProtocolParams().getMaxEpoch());
-        protocolParams.setNOpt(currentProtocolParameters.getProtocolParams().getNOpt());
-        protocolParams.setA0(currentProtocolParameters.getProtocolParams().getPoolPledgeInfluence());
-        protocolParams.setRho(currentProtocolParameters.getProtocolParams().getExpansionRate());
-        protocolParams.setTau(currentProtocolParameters.getProtocolParams().getTreasuryGrowthRate());
-        protocolParams.setDecentralisationParam(currentProtocolParameters.getProtocolParams().getDecentralisationParam()); //Deprecated. Not there
-        protocolParams.setExtraEntropy(currentProtocolParameters.getProtocolParams().getExtraEntropy());
-        protocolParams.setProtocolMajorVer(currentProtocolParameters.getProtocolParams().getProtocolMajorVer());
-        protocolParams.setProtocolMinorVer(currentProtocolParameters.getProtocolParams().getProtocolMinorVer());
-        protocolParams.setMinUtxo(String.valueOf(currentProtocolParameters.getProtocolParams().getMinUtxo()));
-        protocolParams.setMinPoolCost(String.valueOf(currentProtocolParameters.getProtocolParams().getMinPoolCost()));
+        protocolParams.setMinFeeA(protocolParamUpdate.getMinFeeA());
+        protocolParams.setMinFeeB(protocolParamUpdate.getMinFeeB());
+        protocolParams.setMaxBlockSize(protocolParamUpdate.getMaxBlockSize());
+        protocolParams.setMaxTxSize(protocolParamUpdate.getMaxTxSize());
+        protocolParams.setMaxBlockHeaderSize(protocolParamUpdate.getMaxBlockHeaderSize());
+        protocolParams.setKeyDeposit(String.valueOf(protocolParamUpdate.getKeyDeposit()));
+        protocolParams.setPoolDeposit(String.valueOf(protocolParamUpdate.getPoolDeposit()));
+        protocolParams.setEMax(protocolParamUpdate.getMaxEpoch());
+        protocolParams.setNOpt(protocolParamUpdate.getNOpt());
+        protocolParams.setA0(protocolParamUpdate.getPoolPledgeInfluence());
+        protocolParams.setRho(protocolParamUpdate.getExpansionRate());
+        protocolParams.setTau(protocolParamUpdate.getTreasuryGrowthRate());
+        protocolParams.setDecentralisationParam(protocolParamUpdate.getDecentralisationParam()); //Deprecated. Not there
+        protocolParams.setExtraEntropy(protocolParamUpdate.getExtraEntropy());
+        protocolParams.setProtocolMajorVer(protocolParamUpdate.getProtocolMajorVer());
+        protocolParams.setProtocolMinorVer(protocolParamUpdate.getProtocolMinorVer());
+        protocolParams.setMinUtxo(String.valueOf(protocolParamUpdate.getMinUtxo()));
+        protocolParams.setMinPoolCost(String.valueOf(protocolParamUpdate.getMinPoolCost()));
 //        protocolParams.setNonce(currentProtocolParameters.getProtocolParameters().getNonce()); //TODO
 
-//        Map<String, Long> plutusV1CostModel = currentProtocolParameters.getProtocolParams().getCostModels().get("plutus:v1"); //TODo
-//        Map<String, Long> plutusV2CostModel = currentProtocolParameters.getProtocolParameters().getCostModels().get("plutus:v2");
-//        Map<String, Map<String, Long>> costModels = new HashMap<>();
-//        costModels.put("PlutusV1", plutusV1CostModel);
-//        costModels.put("PlutusV2", plutusV2CostModel);
-//        protocolParams.setCostModels(costModels);
+        Map<String, Long> plutusV1CostModel = cborToCostModel(protocolParamUpdate.getCostModels().get(0));
+        Map<String, Long> plutusV2CostModel = cborToCostModel(protocolParamUpdate.getCostModels().get(1));
 
-        protocolParams.setPriceMem(currentProtocolParameters.getProtocolParams().getPriceMem());
-        protocolParams.setPriceStep(currentProtocolParameters.getProtocolParams().getPriceStep());
-        protocolParams.setMaxTxExMem(String.valueOf(currentProtocolParameters.getProtocolParams().getMaxTxExMem()));
-        protocolParams.setMaxTxExSteps(String.valueOf(currentProtocolParameters.getProtocolParams().getMaxTxExSteps()));
-        protocolParams.setMaxBlockExMem(String.valueOf(currentProtocolParameters.getProtocolParams().getMaxBlockExMem()));
-        protocolParams.setMaxBlockExSteps(String.valueOf(currentProtocolParameters.getProtocolParams().getMaxBlockExSteps()));
-        protocolParams.setMaxValSize(String.valueOf(currentProtocolParameters.getProtocolParams().getMaxValSize()));
-        protocolParams.setCollateralPercent(BigDecimal.valueOf(currentProtocolParameters.getProtocolParams().getCollateralPercent()));
-        protocolParams.setMaxCollateralInputs(currentProtocolParameters.getProtocolParams().getMaxCollateralInputs());
-        protocolParams.setCoinsPerUtxoSize(String.valueOf(currentProtocolParameters.getProtocolParams().getAdaPerUtxoByte()));
+        Map<String, Map<String, Long>> costModels = new HashMap<>();
+        costModels.put("PlutusV1", plutusV1CostModel);
+        costModels.put("PlutusV2", plutusV2CostModel);
+        protocolParams.setCostModels(costModels);
+
+        protocolParams.setPriceMem(protocolParamUpdate.getPriceMem());
+        protocolParams.setPriceStep(protocolParamUpdate.getPriceStep());
+        protocolParams.setMaxTxExMem(String.valueOf(protocolParamUpdate.getMaxTxExMem()));
+        protocolParams.setMaxTxExSteps(String.valueOf(protocolParamUpdate.getMaxTxExSteps()));
+        protocolParams.setMaxBlockExMem(String.valueOf(protocolParamUpdate.getMaxBlockExMem()));
+        protocolParams.setMaxBlockExSteps(String.valueOf(protocolParamUpdate.getMaxBlockExSteps()));
+        protocolParams.setMaxValSize(String.valueOf(protocolParamUpdate.getMaxValSize()));
+        protocolParams.setCollateralPercent(BigDecimal.valueOf(protocolParamUpdate.getCollateralPercent()));
+        protocolParams.setMaxCollateralInputs(protocolParamUpdate.getMaxCollateralInputs());
+        protocolParams.setCoinsPerUtxoSize(String.valueOf(protocolParamUpdate.getAdaPerUtxoByte()));
         return protocolParams;
+    }
+
+    private Map<String, Long> cborToCostModel(String costModelCbor) {
+        Array array = (Array) CborSerializationUtil.deserializeOne(HexUtil.decodeHexString(costModelCbor));
+        Map<String, Long> costModel = new HashMap<>();
+        int index = 0;
+        for (DataItem di : array.getDataItems()) {
+            BigInteger val = ((UnsignedInteger) di).getValue();
+            costModel.put(String.format("%03d", index++), val.longValue());
+        }
+
+        return costModel;
     }
 
     public static void main(String[] args) {

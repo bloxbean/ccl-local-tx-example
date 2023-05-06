@@ -1,24 +1,27 @@
 package com.bloxbean.cardano.example.localtx;
 
-import com.bloxbean.cardano.yaci.core.helpers.LocalStateQueryClient;
-import com.bloxbean.cardano.yaci.core.helpers.LocalTxSubmissionClient;
 import com.bloxbean.cardano.yaci.core.protocol.localtx.LocalTxSubmissionListener;
 import com.bloxbean.cardano.yaci.core.protocol.localtx.messages.MsgAcceptTx;
 import com.bloxbean.cardano.yaci.core.protocol.localtx.messages.MsgRejectTx;
 import com.bloxbean.cardano.yaci.core.protocol.localtx.model.TxSubmissionRequest;
+import com.bloxbean.cardano.yaci.helper.LocalClientProvider;
+import com.bloxbean.cardano.yaci.helper.LocalStateQueryClient;
+import com.bloxbean.cardano.yaci.helper.LocalTxSubmissionClient;
 
 public enum LocalNodeClientFactory {
     INSTANCE;
 
+    private LocalClientProvider localClientProvider;
     private LocalStateQueryClient localStateQueryClient;
     private LocalTxSubmissionClient txSubmissionClient;
 
     LocalNodeClientFactory() {
-        this.localStateQueryClient = new LocalStateQueryClient(Constant.CARDANO_NODE_SOCKET_FILE, Constant.PROTOCOL_MAGIC_ID);
-        this.localStateQueryClient.start(result -> {});
+        localClientProvider = new LocalClientProvider(Constant.CARDANO_NODE_SOCKET_FILE, Constant.PROTOCOL_MAGIC_ID);
 
-        this.txSubmissionClient = new LocalTxSubmissionClient(Constant.CARDANO_NODE_SOCKET_FILE, Constant.PROTOCOL_MAGIC_ID);
-        this.txSubmissionClient.addTxSubmissionListener(new LocalTxSubmissionListener() {
+        localStateQueryClient = localClientProvider.getLocalStateQueryClient();
+        txSubmissionClient = localClientProvider.getTxSubmissionClient();
+
+        localClientProvider.addTxSubmissionListener(new LocalTxSubmissionListener() {
             @Override
             public void txAccepted(TxSubmissionRequest txSubmissionRequest, MsgAcceptTx msgAcceptTx) {
                 System.out.println("*********** Transaction Submitted Successfully ***************");
@@ -30,7 +33,8 @@ public enum LocalNodeClientFactory {
                 System.out.println("########## Transaction submission failed ###########");
             }
         });
-        this.txSubmissionClient.start(txResult -> {});
+
+        localClientProvider.start();
     }
 
     public LocalStateQueryClient getLocalStateQueryClient() {
@@ -42,7 +46,7 @@ public enum LocalNodeClientFactory {
     }
 
     public void shutdown() {
-        localStateQueryClient.shutdown();
-        txSubmissionClient.shutdown();
+        if (localClientProvider != null)
+            localClientProvider.shutdown();
     }
 }

@@ -2,6 +2,7 @@ package com.bloxbean.cardano.example.localtx;
 
 import co.nstant.in.cbor.model.Array;
 import co.nstant.in.cbor.model.DataItem;
+import co.nstant.in.cbor.model.Special;
 import co.nstant.in.cbor.model.UnsignedInteger;
 import com.bloxbean.cardano.client.api.ProtocolParamsSupplier;
 import com.bloxbean.cardano.client.api.model.ProtocolParams;
@@ -78,6 +79,8 @@ public class YaciProtocolSupplier implements ProtocolParamsSupplier {
         Map<String, Long> costModel = new HashMap<>();
         int index = 0;
         for (DataItem di : array.getDataItems()) {
+            if (di == Special.BREAK)
+                continue;
             BigInteger val = ((UnsignedInteger) di).getValue();
             costModel.put(String.format("%03d", index++), val.longValue());
         }
